@@ -1,0 +1,31 @@
+# permissions for end users to edit unifinetworks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: unifinetwork-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: network-operator
+    app.kubernetes.io/part-of: network-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: unifinetwork-editor-role
+rules:
+- apiGroups:
+  - network.suslian.engineer
+  resources:
+  - unifinetworks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.suslian.engineer
+  resources:
+  - unifinetworks/status
+  verbs:
+  - get
