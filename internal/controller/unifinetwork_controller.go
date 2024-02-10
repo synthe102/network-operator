@@ -18,19 +18,23 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/paultyng/go-unifi/unifi"
 	networkv1alpha1 "github.com/synthe102/network-operator/api/v1alpha1"
 )
 
 // UnifiNetworkReconciler reconciles a UnifiNetwork object
 type UnifiNetworkReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme      *runtime.Scheme
+	UnifiClient *unifi.Client
 }
 
 //+kubebuilder:rbac:groups=network.suslian.engineer,resources=unifinetworks,verbs=get;list;watch;create;update;patch;delete
@@ -47,11 +51,62 @@ type UnifiNetworkReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.0/pkg/reconcile
 func (r *UnifiNetworkReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
+	log.Info(fmt.Sprintf("Started reconciliation for network %s", req.Name))
 
-	// TODO(user): your logic here
+	var un networkv1alpha1.UnifiNetwork
+	if err := r.Client.Get(ctx, req.NamespacedName, &un); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "failed to get unifi network CR instance")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
 
-	return ctrl.Result{}, nil
+	if un.DeletionTimestamp != nil {
+
+	}
+
+	networks, err := r.UnifiClient.ListNetwork(ctx, un.Spec.Site)
+	if err != nil {
+		log.Error(err, "failed to list networks")
+		return ctrl.Result{}, err
+	}
+
+	shouldCreate := true
+	for _, n := range networks {
+		if n.Name == un.Spec.Name {
+			if n.VLAN == un.Spec.VlanID {
+				log.Info("network alreay exists")
+				// No network is found with the same name and VLAN ID.
+				shouldCreate = false
+			}
+		}
+	}
+	if shouldCreate {
+		network := &unifi.Network{
+			Name:        un.Spec.Name,
+			Purpose:     "vlan-only",
+			VLAN:        un.Spec.VlanID,
+			VLANEnabled: true,
+			Enabled:     true,
+		}
+		network, err = r.UnifiClient.CreateNetwork(ctx, un.Spec.Site, network)
+		if err != nil {
+			log.Error(err, "failed to create unifi network")
+			return ctrl.Result{}, err
+		}
+		un.Status.CIDR = network.IPSubnet
+		un.Status.ID = network.ID
+		if err := r.Client.Status().Update(ctx, &un); err != nil {
+			log.Error(err, "failed to update unifi network CR status")
+			return ctrl.Result{}, err
+		}
+	}
+
+	return ctrl.Result{
+		RequeueAfter: 15 * time.Second,
+	}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

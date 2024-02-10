@@ -9,4 +9,6 @@ metadata:
     app.kubernetes.io/created-by: network-operator
   name: unifinetwork-sample
 spec:
-  # TODO(user): Add fields here
+  name: test-net
+  site: default
+  vlan_id: 102

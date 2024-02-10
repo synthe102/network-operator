@@ -27,15 +27,17 @@ import (
 type UnifiNetworkSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of UnifiNetwork. Edit unifinetwork_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Name   string `json:"name"`
+	VlanID int    `json:"vlan_id"`
+	Site   string `json:"site"`
 }
 
 // UnifiNetworkStatus defines the observed state of UnifiNetwork
 type UnifiNetworkStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	ID   string `json:"id"`
+	CIDR string `json:"cidr"`
 }
 
 //+kubebuilder:object:root=true

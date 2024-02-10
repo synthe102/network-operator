@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	networkv1alpha1 "github.com/synthe102/network-operator/api/v1alpha1"
+	"github.com/synthe102/network-operator/internal/config"
 	"github.com/synthe102/network-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
@@ -122,9 +123,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Get unifi client
+	uc, err := config.NewUnifiClient()
+	if err != nil {
+		setupLog.Error(err, "unable to generate unifi client")
+		os.Exit(1)
+	}
+
 	if err = (&controller.UnifiNetworkReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		UnifiClient: uc,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "UnifiNetwork")
 		os.Exit(1)
